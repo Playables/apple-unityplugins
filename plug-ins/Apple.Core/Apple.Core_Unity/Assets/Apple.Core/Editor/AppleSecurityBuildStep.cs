@@ -64,6 +64,10 @@ namespace Apple.Core
 #if (UNITY_EDITOR_OSX && (UNITY_IOS || UNITY_TVOS || UNITY_STANDALONE_OSX || UNITY_VISIONOS))
         public override void OnProcessEntitlements(AppleBuildProfile appleBuildProfile, BuildTarget buildTarget, string pathToBuiltTarget, PlistDocument entitlements)
         {
+            // The com.apple.security.* keys below are App Sandbox entitlements, which only apply to macOS.
+            if (buildTarget != BuildTarget.StandaloneOSX)
+                return;
+
             if (AppSandboxEntitlement)
                 entitlements.root.SetBoolean("com.apple.security.app-sandbox", true);
 

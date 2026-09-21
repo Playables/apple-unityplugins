@@ -166,9 +166,7 @@ namespace Apple.Core
                     }
                 }
 
-                entitlements.WriteToFile(entitlementsPath);
-
-                FixEntitlementFormatting(entitlementsPath);
+                WriteEntitlementsIfChanged(entitlementsPath, FixEntitlementFormatting(entitlements.WriteToString()));
 
                 if (pbxProject != null)
                 {
@@ -236,15 +234,11 @@ namespace Apple.Core
         /// <summary>
         /// Unity's plist modification often adds spaces which cause issue with formatting with the entitlements file.
         /// </summary>
-        /// <param name="entitlementsPath"></param>
-        private static void FixEntitlementFormatting(string entitlementsPath)
+        /// <param name="contents">The serialized entitlements document.</param>
+        /// <returns>The entitlements contents with the stray spaces removed.</returns>
+        private static string FixEntitlementFormatting(string contents)
         {
-            if (!File.Exists(entitlementsPath))
-                return;
-
             LogDevelopmentMessage("FixEntitlementFormatting", "Fixing entitlements formatting begin");
-
-            var contents = File.ReadAllText(entitlementsPath);
 
             // We replace any <tag /> with a space and remove the space...
             var matches = Regex.Matches(contents, "<(.*)\\s/>");
@@ -255,6 +249,22 @@ namespace Apple.Core
                 {
                     contents = contents.Replace(match.Groups[0].Value, $"<{match.Groups[1].Value}/>");
                 }
+            }
+
+            return contents;
+        }
+
+        /// <summary>
+        /// Writes the entitlements only when they differ from disk, so an unchanged file keeps its modification time and cannot trip Xcode's "modified during the build" check.
+        /// </summary>
+        /// <param name="entitlementsPath"></param>
+        /// <param name="contents"></param>
+        private static void WriteEntitlementsIfChanged(string entitlementsPath, string contents)
+        {
+            if (File.Exists(entitlementsPath) && File.ReadAllText(entitlementsPath) == contents)
+            {
+                LogDevelopmentMessage("WriteEntitlementsIfChanged", $"Entitlements unchanged, leaving {entitlementsPath} untouched.");
+                return;
             }
 
             File.WriteAllText(entitlementsPath, contents);
